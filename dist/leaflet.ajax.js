@@ -11,7 +11,7 @@ var REJECTED = ['REJECTED'];
 var FULFILLED = ['FULFILLED'];
 var PENDING = ['PENDING'];
 
-module.exports = exports = Promise;
+module.exports = Promise;
 
 function Promise(resolver) {
   if (typeof resolver !== 'function') {
@@ -165,7 +165,7 @@ function tryCatch(func, value) {
   return out;
 }
 
-exports.resolve = resolve;
+Promise.resolve = resolve;
 function resolve(value) {
   if (value instanceof this) {
     return value;
@@ -173,13 +173,13 @@ function resolve(value) {
   return handlers.resolve(new this(INTERNAL), value);
 }
 
-exports.reject = reject;
+Promise.reject = reject;
 function reject(reason) {
   var promise = new this(INTERNAL);
   return handlers.reject(promise, reason);
 }
 
-exports.all = all;
+Promise.all = all;
 function all(iterable) {
   var self = this;
   if (Object.prototype.toString.call(iterable) !== '[object Array]') {
@@ -218,7 +218,7 @@ function all(iterable) {
   }
 }
 
-exports.race = race;
+Promise.race = race;
 function race(iterable) {
   var self = this;
   if (Object.prototype.toString.call(iterable) !== '[object Array]') {
@@ -345,8 +345,25 @@ module.exports = function (url, options) {
       reject('XMLHttpRequest is not supported');
     }
     var response;
+    var method;
+    var params = null;
     request = new global.XMLHttpRequest();
-    request.open('GET', url);
+    if (!options.method || options.method == 'GET') {
+      method = 'GET';
+      var s = [];
+      Object.keys(options.params).forEach(function (key) {
+        var val = options.params[key];
+        s[s.length] = encodeURIComponent(key) + '=' +
+          encodeURIComponent(val == null ? '' : val);
+      });
+      if (s.length != 0) {
+        url += '?' + s.join('&');
+      }
+    } else {
+      method = options.method;
+      params = Object.keys(options.params).length > 0 ? options.params : null;
+    }
+    request.open(method, url);
     if (options.headers) {
       Object.keys(options.headers).forEach(function (key) {
         request.setRequestHeader(key, options.headers[key]);
@@ -370,7 +387,11 @@ module.exports = function (url, options) {
         }
       }
     };
-    request.send();
+    if (params != null) {
+      request.send(params);
+    } else {
+      request.send();
+    }
   });
   out.catch(function (reason) {
     request.abort();
@@ -394,7 +415,9 @@ L.GeoJSON.AJAX = L.GeoJSON.extend({
     local: false,
     middleware: function (f) {
       return f;
-    }
+    },
+    method: 'GET',
+    params: {}
   },
   initialize: function (url, options) {
     this.urls = [];
@@ -478,8 +501,9 @@ L.GeoJSON.AJAX = L.GeoJSON.extend({
       }
     });
   },
-  refresh: function (url) {
+  refresh: function (url, params) {
     url = url || this.urls;
+    this.ajaxParams.params = params || {};
     this.clearLayers();
     this.addUrl(url);
   },

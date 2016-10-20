@@ -15,8 +15,25 @@ module.exports = function (url, options) {
       reject('XMLHttpRequest is not supported');
     }
     var response;
+    var method;
+    var params = null;
     request = new global.XMLHttpRequest();
-    request.open('GET', url);
+    if (!options.method || options.method == 'GET') {
+      method = 'GET';
+      var s = [];
+      Object.keys(options.params).forEach(function (key) {
+        var val = options.params[key];
+        s[s.length] = encodeURIComponent(key) + '=' +
+          encodeURIComponent(val == null ? '' : val);
+      });
+      if (s.length != 0) {
+        url += '?' + s.join('&');
+      }
+    } else {
+      method = options.method;
+      params = Object.keys(options.params).length > 0 ? options.params : null;
+    }
+    request.open(method, url);
     if (options.headers) {
       Object.keys(options.headers).forEach(function (key) {
         request.setRequestHeader(key, options.headers[key]);
@@ -40,7 +57,11 @@ module.exports = function (url, options) {
         }
       }
     };
-    request.send();
+    if (params != null) {
+      request.send(params);
+    } else {
+      request.send();
+    }
   });
   out.catch(function (reason) {
     request.abort();
